@@ -11,7 +11,6 @@ namespace lab_1_
 
         public TeacherRepository()
         {
-            // Отримуємо connection string із App.config
             _connectionString = ConfigurationManager.ConnectionStrings["UniversityDb"].ConnectionString;
         }
 
