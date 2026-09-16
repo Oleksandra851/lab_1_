@@ -3,7 +3,7 @@ using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 
-namespace lab_1_
+namespace lab_2_
 {
     public class TeacherRepository
     {
