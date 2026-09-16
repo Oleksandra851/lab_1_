@@ -1,33 +1,46 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Configuration;
+using System.Data;
+using System.Data.SqlClient;
 
-namespace lab_2_
+namespace lab_1_
 {
     public class TeacherRepository
     {
-        public List<TeacherOverviewDto> GetTeachersOverview()
-        {
-            using (var db = new UniversityDbContext())
-            {
-                var result = db.TeacherSubjects
-                    .Select(ts => new TeacherOverviewDto
-                    {
-                        ID = ts.Teacher.TeacherID,
-                        ПІБ_Викладача = ts.Teacher.LastName + " " + ts.Teacher.FirstName + " " + (ts.Teacher.MiddleName ?? ""),
-                        Телефон = ts.Teacher.Phone,
-                        Місце_роботи = ts.Teacher.Workplace,
-                        Посада = ts.Teacher.Position.PositionName,
-                        Погодинна_ставка = ts.Teacher.Position.HourlyRate,
-                        Предмет = ts.Subject.SubjectName,
-                        Прочитані_години = ts.HoursRead,
-                        Домашня_адреса = ts.Teacher.HomeAddress,
-                        Характеристика = ts.Teacher.Characteristic
-                    })
-                    .OrderBy(x => x.ПІБ_Викладача)
-                    .ToList();
+        private readonly string _connectionString;
 
-                return result;
+        public TeacherRepository()
+        {
+            _connectionString = ConfigurationManager.ConnectionStrings["UniversityDb"].ConnectionString;
+        }
+
+        public DataTable GetTeachersOverview()
+        {
+            string query = @"
+                SELECT 
+                    T.TeacherID AS [ID],
+                    T.LastName + ' ' + T.FirstName + ' ' + ISNULL(T.MiddleName, '') AS [ПІБ Викладача],
+                    T.Phone AS [Телефон],
+                    T.Workplace AS [Місце роботи],
+                    P.PositionName AS [Посада],
+                    P.HourlyRate AS [Погодинна ставка],
+                    S.SubjectName AS [Предмет],
+                    TS.HoursRead AS [Прочитані години],
+                    T.HomeAddress AS [Домашня адреса],
+                    T.Characteristic AS [Характеристика]
+                FROM Teachers T
+                INNER JOIN Positions P ON T.PositionID = P.PositionID
+                INNER JOIN TeacherSubjects TS ON T.TeacherID = TS.TeacherID
+                INNER JOIN Subjects S ON TS.SubjectID = S.SubjectID
+                ORDER BY T.LastName;";
+
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                SqlDataAdapter adapter = new SqlDataAdapter(query, connection);
+                DataTable dataTable = new DataTable();
+                adapter.Fill(dataTable);
+                return dataTable;
             }
         }
     }
