@@ -1,47 +1,37 @@
 ﻿using System;
-using System.Configuration;
-using System.Data;
-using System.Data.SqlClient;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.EntityFrameworkCore;
 
 namespace lab_2_
 {
     public class TeacherRepository
     {
-        private readonly string _connectionString;
-
-        public TeacherRepository()
+        public List<TeacherOverviewDto> GetTeachersOverview()
         {
-            _connectionString = ConfigurationManager.ConnectionStrings["UniversityDb"].ConnectionString;
-        }
-
-        public DataTable GetTeachersOverview()
-        {
-            string query = @"
-                SELECT 
-                    T.TeacherID AS [ID],
-                    T.LastName + ' ' + T.FirstName + ' ' + ISNULL(T.MiddleName, '') AS [ПІБ Викладача],
-                    T.Phone AS [Телефон],
-                    T.Workplace AS [Місце роботи],
-                    P.PositionName AS [Посада],
-                    P.HourlyRate AS [Погодинна ставка],
-                    S.SubjectName AS [Предмет],
-                    TS.HoursRead AS [Прочитані години],
-                    T.HomeAddress AS [Домашня адреса],
-                    T.Characteristic AS [Характеристика]
-                FROM Teachers T
-                INNER JOIN Positions P ON T.PositionID = P.PositionID
-                INNER JOIN TeacherSubjects TS ON T.TeacherID = TS.TeacherID
-                INNER JOIN Subjects S ON TS.SubjectID = S.SubjectID
-                ORDER BY T.LastName;";
-
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            using (var context = new UniversityDbContext())
             {
-                connection.Open();
-                SqlDataAdapter adapter = new SqlDataAdapter(query, connection);
-                DataTable dataTable = new DataTable();
-                adapter.Fill(dataTable);
-                return dataTable;
+                return context.TeacherSubjects
+                    .Include(ts => ts.Teacher)
+                        .ThenInclude(t => t.Position)
+                    .Include(ts => ts.Subject)
+                    .Select(ts => new TeacherOverviewDto
+                    {
+                        ID = ts.TeacherID,
+                        ПІБ_Викладача = ts.Teacher.LastName + " " + ts.Teacher.FirstName + " " + (ts.Teacher.MiddleName ?? ""),
+                        Телефон = ts.Teacher.Phone,
+                        Місце_роботи = ts.Teacher.Workplace,
+                        Посада = ts.Teacher.Position.PositionName,
+                        Погодинна_ставка = ts.Teacher.Position.HourlyRate,
+                        Предмет = ts.Subject.SubjectName,
+                        Прочитані_години = ts.HoursRead,
+                        Домашня_адреса = ts.Teacher.HomeAddress,
+                        Характеристика = ts.Teacher.Characteristic
+                    })
+                    .OrderBy(t => t.ПІБ_Викладача)
+                    .ToList();
             }
         }
     }
 }
+
